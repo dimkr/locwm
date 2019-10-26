@@ -7,6 +7,8 @@
 
 ```
 
+[![Build Status](https://travis-ci.org/dimkr/locwm.svg?branch=master)](https://travis-ci.org/dimkr/locwm)
+
 ## Overview
 
 locwm is a [Linux](https://www.kernel.org/) port of [OpenBSD](http://www.openbsd.org/)'s *cwm*.
