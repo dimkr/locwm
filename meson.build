@@ -1,5 +1,7 @@
 project('locwm', 'c')
 
+lolibc = subproject('lolibc')
+
 yacc = find_program('yacc')
 yacc = generator(yacc,
                  output : '@BASENAME@.c',
@@ -10,9 +12,8 @@ cwm = executable('cwm',
                  'calmwm.c', 'screen.c', 'xmalloc.c', 'client.c', 'menu.c',
                  'search.c', 'util.c', 'xutil.c', 'conf.c', 'xevents.c', 'group.c',
                  'kbfunc.c', parse_y,
-                 'compat/strlcpy.c', 'compat/strlcat.c', 'compat/strtonum.c',
-                 c_args: ['-D_GNU_SOURCE', '-D__dead='],
-                 include_directories: include_directories('compat'),
+                 c_args: ['-D_GNU_SOURCE'] + lolibc.get_variable('lolibc_c_args'),
+                 include_directories: lolibc.get_variable('lolibc_includes'),
                  dependencies: [
                     dependency('xft'),
                     dependency('freetype2'),
@@ -20,6 +21,7 @@ cwm = executable('cwm',
                     dependency('xrandr'),
                     dependency('x11')
                 ],
+                link_with: lolibc.get_variable('liblolibc'),
                 install: true)
 
 install_man('cwm.1')
