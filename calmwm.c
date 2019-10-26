@@ -104,9 +104,6 @@ main(int argc, char **argv)
 	xfd = x_init(display_name);
 	cwm_status = CWM_RUNNING;
 
-	if (pledge("stdio rpath proc exec", NULL) == -1)
-		err(1, "pledge");
-
 	memset(&pfd, 0, sizeof(pfd));
 	pfd[0].fd = xfd;
 	pfd[0].events = POLLIN;
