@@ -15,7 +15,7 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $OpenBSD: conf.c,v 1.249 2019/03/07 12:54:21 okan Exp $
+ * $OpenBSD: conf.c,v 1.252 2020/04/16 13:32:35 okan Exp $
  */
 
 #include <sys/types.h>
@@ -32,7 +32,7 @@
 
 #include "calmwm.h"
 
-static const char	*conf_bind_getmask(const char *, unsigned int *);
+static const char	*conf_bind_mask(const char *, unsigned int *);
 static void		 conf_unbind_key(struct conf *, struct bind_ctx *);
 static void		 conf_unbind_mouse(struct conf *, struct bind_ctx *);
 
@@ -197,10 +197,11 @@ static const struct {
 	const char	ch;
 	int		mask;
 } bind_mods[] = {
+	{ 'S',	ShiftMask },
 	{ 'C',	ControlMask },
 	{ 'M',	Mod1Mask },
 	{ '4',	Mod4Mask },
-	{ 'S',	ShiftMask },
+	{ '5',	Mod5Mask },
 };
 static const struct {
 	const char	*key;
@@ -280,6 +281,8 @@ conf_init(struct conf *c)
 	c->stickygroups = 0;
 	c->bwidth = 1;
 	c->mamount = 1;
+	c->htile = 50;
+	c->vtile = 50;
 	c->snapdist = 0;
 	c->ngroups = 0;
 	c->nameqlen = 5;
@@ -516,7 +519,7 @@ conf_group(struct screen_ctx *sc)
 }
 
 static const char *
-conf_bind_getmask(const char *name, unsigned int *mask)
+conf_bind_mask(const char *name, unsigned int *mask)
 {
 	char		*dash;
 	const char	*ch;
@@ -524,13 +527,13 @@ conf_bind_getmask(const char *name, unsigned int *mask)
 
 	*mask = 0;
 	if ((dash = strchr(name, '-')) == NULL)
-		return(name);
+		return name;
 	for (i = 0; i < nitems(bind_mods); i++) {
 		if ((ch = strchr(name, bind_mods[i].ch)) != NULL && ch < dash)
 			*mask |= bind_mods[i].mask;
 	}
 	/* Skip past modifiers. */
-	return(dash + 1);
+	return (dash + 1);
 }
 
 int
@@ -543,20 +546,20 @@ conf_bind_key(struct conf *c, const char *bind, const char *cmd)
 
 	if ((strcmp(bind, "all") == 0) && (cmd == NULL)) {
 		conf_unbind_key(c, NULL);
-		return(1);
+		return 1;
 	}
 	kb = xmalloc(sizeof(*kb));
-	key = conf_bind_getmask(bind, &kb->modmask);
+	key = conf_bind_mask(bind, &kb->modmask);
 	kb->press.keysym = XStringToKeysym(key);
 	if (kb->press.keysym == NoSymbol) {
 		warnx("unknown symbol: %s", key);
 		free(kb);
-		return(0);
+		return 0;
 	}
 	conf_unbind_key(c, kb);
 	if (cmd == NULL) {
 		free(kb);
-		return(1);
+		return 1;
 	}
 	cargs = xcalloc(1, sizeof(*cargs));
 	for (i = 0; i < nitems(name_to_func); i++) {
@@ -574,7 +577,7 @@ conf_bind_key(struct conf *c, const char *bind, const char *cmd)
 out:
 	kb->cargs = cargs;
 	TAILQ_INSERT_TAIL(&c->keybindq, kb, entry);
-	return(1);
+	return 1;
 }
 
 static void
@@ -604,20 +607,20 @@ conf_bind_mouse(struct conf *c, const char *bind, const char *cmd)
 
 	if ((strcmp(bind, "all") == 0) && (cmd == NULL)) {
 		conf_unbind_mouse(c, NULL);
-		return(1);
+		return 1;
 	}
 	mb = xmalloc(sizeof(*mb));
-	button = conf_bind_getmask(bind, &mb->modmask);
+	button = conf_bind_mask(bind, &mb->modmask);
 	mb->press.button = strtonum(button, Button1, Button5, &errstr);
 	if (errstr) {
 		warnx("button number is %s: %s", errstr, button);
 		free(mb);
-		return(0);
+		return 0;
 	}
 	conf_unbind_mouse(c, mb);
 	if (cmd == NULL) {
 		free(mb);
-		return(1);
+		return 1;
 	}
 	cargs = xcalloc(1, sizeof(*cargs));
 	for (i = 0; i < nitems(name_to_func); i++) {
@@ -635,7 +638,7 @@ conf_bind_mouse(struct conf *c, const char *bind, const char *cmd)
 out:
 	mb->cargs = cargs;
 	TAILQ_INSERT_TAIL(&c->mousebindq, mb, entry);
-	return(1);
+	return 1;
 }
 
 static void
@@ -694,48 +697,4 @@ conf_grab_mouse(Window win)
 			    None, None);
 		}
 	}
-}
-
-static char *cwmhints[] = {
-	"WM_STATE",
-	"WM_DELETE_WINDOW",
-	"WM_TAKE_FOCUS",
-	"WM_PROTOCOLS",
-	"_MOTIF_WM_HINTS",
-	"UTF8_STRING",
-	"WM_CHANGE_STATE",
-};
-static char *ewmhints[] = {
-	"_NET_SUPPORTED",
-	"_NET_SUPPORTING_WM_CHECK",
-	"_NET_ACTIVE_WINDOW",
-	"_NET_CLIENT_LIST",
-	"_NET_CLIENT_LIST_STACKING",
-	"_NET_NUMBER_OF_DESKTOPS",
-	"_NET_CURRENT_DESKTOP",
-	"_NET_DESKTOP_VIEWPORT",
-	"_NET_DESKTOP_GEOMETRY",
-	"_NET_VIRTUAL_ROOTS",
-	"_NET_SHOWING_DESKTOP",
-	"_NET_DESKTOP_NAMES",
-	"_NET_WORKAREA",
-	"_NET_WM_NAME",
-	"_NET_WM_DESKTOP",
-	"_NET_CLOSE_WINDOW",
-	"_NET_WM_STATE",
-	"_NET_WM_STATE_STICKY",
-	"_NET_WM_STATE_MAXIMIZED_VERT",
-	"_NET_WM_STATE_MAXIMIZED_HORZ",
-	"_NET_WM_STATE_HIDDEN",
-	"_NET_WM_STATE_FULLSCREEN",
-	"_NET_WM_STATE_DEMANDS_ATTENTION",
-	"_NET_WM_STATE_SKIP_PAGER",
-	"_NET_WM_STATE_SKIP_TASKBAR",
-	"_CWM_WM_STATE_FREEZE",
-};
-void
-conf_atoms(void)
-{
-	XInternAtoms(X_Dpy, cwmhints, nitems(cwmhints), False, cwmh);
-	XInternAtoms(X_Dpy, ewmhints, nitems(ewmhints), False, ewmh);
 }

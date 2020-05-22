@@ -15,7 +15,7 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $OpenBSD: calmwm.c,v 1.111 2019/03/04 19:28:17 okan Exp $
+ * $OpenBSD: calmwm.c,v 1.114 2020/03/24 14:48:29 okan Exp $
  */
 
 #include <sys/types.h>
@@ -44,6 +44,7 @@ struct screen_q		 Screenq = TAILQ_HEAD_INITIALIZER(Screenq);
 struct conf		 Conf;
 volatile sig_atomic_t	 cwm_status;
 
+__dead void	usage(void);
 static void	sighdlr(int);
 static int	x_errorhandler(Display *, XErrorEvent *);
 static int	x_init(const char *);
@@ -88,11 +89,12 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (signal(SIGCHLD, sighdlr) == SIG_ERR)
+	if (signal(SIGCHLD, sighdlr) == SIG_ERR ||
+	    signal(SIGHUP, sighdlr) == SIG_ERR ||
+	    signal(SIGINT, sighdlr) == SIG_ERR ||
+	    signal(SIGTERM, sighdlr) == SIG_ERR)
 		err(1, "signal");
-	if (signal(SIGHUP, sighdlr) == SIG_ERR)
-		err(1, "signal");
-
+ 
 	if (parse_config(Conf.conf_file, &Conf) == -1) {
 		warnx("error parsing config file");
 		if (nflag)
@@ -124,7 +126,7 @@ main(int argc, char **argv)
 		u_exec(fallback);
 	}
 
-	return(0);
+	return 0;
 }
 
 static int
@@ -142,7 +144,7 @@ x_init(const char *dpyname)
 
 	Conf.xrandr = XRRQueryExtension(X_Dpy, &Conf.xrandr_event_base, &i);
 
-	conf_atoms();
+	xu_atom_init();
 	conf_cursor(&Conf);
 
 	for (i = 0; i < ScreenCount(X_Dpy); i++)
@@ -180,7 +182,7 @@ static int
 x_wmerrorhandler(Display *dpy, XErrorEvent *e)
 {
 	errx(1, "root window unavailable - perhaps another wm is running?");
-	return(0);
+	return 0;
 }
 
 static int
@@ -196,7 +198,7 @@ x_errorhandler(Display *dpy, XErrorEvent *e)
 
 	warnx("%s(0x%x): %s", req, (unsigned int)e->resourceid, msg);
 #endif
-	return(0);
+	return 0;
 }
 
 static void
@@ -214,6 +216,10 @@ sighdlr(int sig)
 		break;
 	case SIGHUP:
 		cwm_status = CWM_EXEC_WM;
+		break;
+	case SIGINT:
+	case SIGTERM:
+		cwm_status = CWM_QUIT;
 		break;
 	}
 

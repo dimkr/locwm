@@ -15,7 +15,7 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $OpenBSD: xmalloc.c,v 1.15 2015/03/28 23:12:47 okan Exp $
+ * $OpenBSD: xmalloc.c,v 1.17 2020/02/27 14:56:39 okan Exp $
  */
 
 #include <sys/types.h>
@@ -43,7 +43,7 @@ xmalloc(size_t siz)
 	if ((p = malloc(siz)) == NULL)
 		err(1, "malloc");
 
-	return(p);
+	return p;
 }
 
 void *
@@ -58,7 +58,7 @@ xcalloc(size_t no, size_t siz)
 	if ((p = calloc(no, siz)) == NULL)
 		err(1, "calloc");
 
-	return(p);
+	return p;
 }
 
 void *
@@ -70,7 +70,7 @@ xreallocarray(void *ptr, size_t nmemb, size_t size)
 	if (p == NULL)
 		errx(1, "xreallocarray: out of memory (new_size %zu bytes)",
 		    nmemb * size);
-	return(p);
+	return p;
 }
 
 char *
@@ -81,7 +81,7 @@ xstrdup(const char *str)
 	if ((p = strdup(str)) == NULL)
 		err(1, "strdup");
 
-	return(p);
+	return p;
 }
 
 int
@@ -91,11 +91,20 @@ xasprintf(char **ret, const char *fmt, ...)
 	int	 i;
 
 	va_start(ap, fmt);
-	i = vasprintf(ret, fmt, ap);
+	i = xvasprintf(ret, fmt, ap);
 	va_end(ap);
 
-	if (i < 0 || *ret == NULL)
-		err(1, "asprintf");
+	return i;
+}
 
-	return(i);
+int
+xvasprintf(char **ret, const char *fmt, va_list ap)
+{
+	int	 i;
+
+	i = vasprintf(ret, fmt, ap);
+	if (i == -1)
+		err(1, "vasprintf");
+
+	return i;
 }
