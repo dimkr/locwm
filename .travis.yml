@@ -1,7 +1,0 @@
-language: minimal
-
-services:
-  - docker
-
-script:
-  - docker run -w /root/locwm -v `pwd`:/root/locwm dimkr/locwm ./ci.sh
