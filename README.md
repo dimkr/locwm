@@ -7,7 +7,7 @@
 
 ```
 
-[![Build Status](https://travis-ci.org/dimkr/locwm.svg?branch=master)](https://travis-ci.org/dimkr/locwm)
+[![Build Status](https://github.com/dimkr/locwm/actions/workflows/build.yml/badge.svg)](https://github.com/dimkr/locwm/actions/workflows/build.yml)
 
 ## Overview
 
