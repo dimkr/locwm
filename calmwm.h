@@ -15,7 +15,7 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- * $OpenBSD: calmwm.h,v 1.375 2020/04/16 13:32:35 okan Exp $
+ * $OpenBSD: calmwm.h,v 1.378 2022/02/26 15:19:18 okan Exp $
  */
 
 #ifndef _CALMWM_H_
@@ -214,6 +214,7 @@ struct screen_ctx {
 	struct region_q		 regionq;
 	struct group_q		 groupq;
 	struct group_ctx	*group_active;
+	struct group_ctx	*group_last;
 	Colormap		 colormap;
 	Visual			*visual;
 	struct {
@@ -308,30 +309,39 @@ struct conf {
 
 /* MWM hints */
 struct mwm_hints {
-#define MWM_HINTS_ELEMENTS	3L
-#define MWM_FLAGS_STATUS	(1<<3)
+#define MWM_HINTS_ELEMENTS	5L
 
-#define MWM_FLAGS_FUNCTIONS	(1<<0)
-#define MWM_FLAGS_DECORATIONS	(1<<1)
-#define MWM_FLAGS_INPUT_MODE	(1<<2)
+#define MWM_HINTS_FUNCTIONS	(1L << 0)
+#define MWM_HINTS_DECORATIONS	(1L << 1)
+#define MWM_HINTS_INPUT_MODE	(1L << 2)
+#define MWM_HINTS_STATUS	(1L << 3)
 	unsigned long	flags;
 
-#define MWM_FUNCS_ALL		(1<<0)
-#define MWM_FUNCS_RESIZE	(1<<1)
-#define MWM_FUNCS_MOVE		(1<<2)
-#define MWM_FUNCS_MINIMIZE	(1<<3)
-#define MWM_FUNCS_MAXIMIZE	(1<<4)
-#define MWM_FUNCS_CLOSE		(1<<5)
+#define MWM_FUNC_ALL		(1L << 0)
+#define MWM_FUNC_RESIZE		(1L << 1)
+#define MWM_FUNC_MOVE		(1L << 2)
+#define MWM_FUNC_MINIMIZE	(1L << 3)
+#define MWM_FUNC_MAXIMIZE	(1L << 4)
+#define MWM_FUNC_CLOSE		(1L << 5)
 	unsigned long	functions;
 
-#define	MWM_DECOR_ALL		(1<<0)
-#define	MWM_DECOR_BORDER	(1<<1)
-#define MWM_DECOR_RESIZE_HANDLE	(1<<2)
-#define MWM_DECOR_TITLEBAR	(1<<3)
-#define MWM_DECOR_MENU		(1<<4)
-#define MWM_DECOR_MINIMIZE	(1<<5)
-#define MWM_DECOR_MAXIMIZE	(1<<6)
+#define	MWM_DECOR_ALL		(1L << 0)
+#define	MWM_DECOR_BORDER	(1L << 1)
+#define MWM_DECOR_RESIZEH	(1L << 2)
+#define MWM_DECOR_TITLE		(1L << 3)
+#define MWM_DECOR_MENU		(1L << 4)
+#define MWM_DECOR_MINIMIZE	(1L << 5)
+#define MWM_DECOR_MAXIMIZE	(1L << 6)
 	unsigned long	decorations;
+
+#define MWM_INPUT_MODELESS			0
+#define MWM_INPUT_PRIMARY_APPLICATION_MODAL	1
+#define MWM_INPUT_SYSTEM_MODAL			2
+#define MWM_INPUT_FULL_APPLICATION_MODAL	3
+	long		inputMode;
+
+#define MWM_TEAROFF_WINDOW	(1L << 0)
+	unsigned long	status;
 };
 
 enum cwmh {
@@ -501,6 +511,7 @@ void			 kbfunc_client_toggle_group(void *, struct cargs *);
 void			 kbfunc_client_movetogroup(void *, struct cargs *);
 void			 kbfunc_group_toggle(void *, struct cargs *);
 void			 kbfunc_group_only(void *, struct cargs *);
+void			 kbfunc_group_last(void *, struct cargs *);
 void			 kbfunc_group_close(void *, struct cargs *);
 void			 kbfunc_group_cycle(void *, struct cargs *);
 void			 kbfunc_group_toggle_all(void *, struct cargs *);
@@ -574,7 +585,7 @@ int			 xu_ewmh_get_net_wm_desktop(struct client_ctx *, long *);
 void			 xu_ewmh_set_net_wm_desktop(struct client_ctx *);
 Atom 			*xu_ewmh_get_net_wm_state(struct client_ctx *, int *);
 void 			 xu_ewmh_handle_net_wm_state_msg(struct client_ctx *,
-			     int, Atom , Atom);
+			     int, Atom, Atom);
 void 			 xu_ewmh_set_net_wm_state(struct client_ctx *);
 void 			 xu_ewmh_restore_net_wm_state(struct client_ctx *);
 

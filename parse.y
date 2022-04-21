@@ -1,4 +1,4 @@
-/*	$OpenBSD: parse.y,v 1.73 2020/04/16 13:32:35 okan Exp $ */
+/*	$OpenBSD: parse.y,v 1.75 2021/12/24 16:00:47 okan Exp $ */
 
 /*
  * Copyright (c) 2002, 2003, 2004 Henning Brauer <henning@openbsd.org>
@@ -81,7 +81,7 @@ typedef struct {
 %token	<v.string>		STRING
 %token	<v.number>		NUMBER
 %type	<v.number>		yesno
-%type	<v.string>		string
+%type	<v.string>		string numberstring
 %%
 
 grammar		: /* empty */
@@ -100,6 +100,17 @@ string		: string STRING			{
 			}
 			free($1);
 			free($2);
+		}
+		| STRING
+		;
+
+numberstring	: NUMBER				{
+			char	*s;
+			if (asprintf(&s, "%lld", $1) == -1) {
+				yyerror("string: asprintf");
+				YYERROR;
+			}
+			$$ = s;
 		}
 		| STRING
 		;
@@ -209,7 +220,7 @@ main		: FONTNAME STRING		{
 			conf->gap.left = $4;
 			conf->gap.right = $5;
 		}
-		| BINDKEY STRING string {
+		| BINDKEY numberstring string {
 			if (!conf_bind_key(conf, $2, $3)) {
 				yyerror("invalid bind-key: %s %s", $2, $3);
 				free($2);
@@ -219,7 +230,7 @@ main		: FONTNAME STRING		{
 			free($2);
 			free($3);
 		}
-		| UNBINDKEY STRING {
+		| UNBINDKEY numberstring {
 			if (!conf_bind_key(conf, $2, NULL)) {
 				yyerror("invalid unbind-key: %s", $2);
 				free($2);
@@ -227,7 +238,7 @@ main		: FONTNAME STRING		{
 			}
 			free($2);
 		}
-		| BINDMOUSE STRING string {
+		| BINDMOUSE numberstring string {
 			if (!conf_bind_mouse(conf, $2, $3)) {
 				yyerror("invalid bind-mouse: %s %s", $2, $3);
 				free($2);
@@ -237,7 +248,7 @@ main		: FONTNAME STRING		{
 			free($2);
 			free($3);
 		}
-		| UNBINDMOUSE STRING {
+		| UNBINDMOUSE numberstring {
 			if (!conf_bind_mouse(conf, $2, NULL)) {
 				yyerror("invalid unbind-mouse: %s", $2);
 				free($2);
@@ -361,9 +372,9 @@ lookup(char *s)
 
 #define MAXPUSHBACK	128
 
-u_char	*parsebuf;
+char	*parsebuf;
 int	 parseindex;
-u_char	 pushback_buffer[MAXPUSHBACK];
+char	 pushback_buffer[MAXPUSHBACK];
 int	 pushback_index = 0;
 
 int
@@ -374,7 +385,7 @@ lgetc(int quotec)
 	if (parsebuf) {
 		/* Read character from the parsebuffer instead of input. */
 		if (parseindex >= 0) {
-			c = parsebuf[parseindex++];
+			c = (unsigned char)parsebuf[parseindex++];
 			if (c != '\0')
 				return (c);
 			parsebuf = NULL;
@@ -383,7 +394,7 @@ lgetc(int quotec)
 	}
 
 	if (pushback_index)
-		return (pushback_buffer[--pushback_index]);
+		return ((unsigned char)pushback_buffer[--pushback_index]);
 
 	if (quotec) {
 		if ((c = getc(file->stream)) == EOF) {
@@ -424,10 +435,10 @@ lungetc(int c)
 		if (parseindex >= 0)
 			return (c);
 	}
-	if (pushback_index < MAXPUSHBACK-1)
-		return (pushback_buffer[pushback_index++] = c);
-	else
+	if (pushback_index + 1 >= MAXPUSHBACK)
 		return (EOF);
+	pushback_buffer[pushback_index++] = c;
+	return (c);
 }
 
 int
@@ -440,7 +451,7 @@ findeol(void)
 	/* skip to either EOF or the first real EOL */
 	while (1) {
 		if (pushback_index)
-			c = pushback_buffer[--pushback_index];
+			c = (unsigned char)pushback_buffer[--pushback_index];
 		else
 			c = lgetc(0);
 		if (c == '\n') {
@@ -456,8 +467,8 @@ findeol(void)
 int
 yylex(void)
 {
-	u_char	 buf[8096];
-	u_char	*p;
+	char	 buf[8096];
+	char	*p;
 	int	 quotec, next, c;
 	int	 token;
 
@@ -514,7 +525,7 @@ yylex(void)
 	if (c == '-' || isdigit(c)) {
 		do {
 			*p++ = c;
-			if ((unsigned)(p-buf) >= sizeof(buf)) {
+			if ((size_t)(p-buf) >= sizeof(buf)) {
 				yyerror("string too long");
 				return (findeol());
 			}
@@ -537,8 +548,8 @@ yylex(void)
 		} else {
 nodigits:
 			while (p > buf + 1)
-				lungetc(*--p);
-			c = *--p;
+				lungetc((unsigned char)*--p);
+			c = (unsigned char)*--p;
 			if (c == '-')
 				return (c);
 		}
@@ -553,7 +564,7 @@ nodigits:
 	if (isalnum(c) || c == ':' || c == '_' || c == '*' || c == '/') {
 		do {
 			*p++ = c;
-			if ((unsigned)(p-buf) >= sizeof(buf)) {
+			if ((size_t)(p-buf) >= sizeof(buf)) {
 				yyerror("string too long");
 				return (findeol());
 			}
